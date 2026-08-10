@@ -70,8 +70,10 @@ hardcoded, your next reboot is a dice roll.
   parallel), interleave 1, attention `B12X_MLA_SPARSE`, moe `flashinfer_cutlass`.
 - **Spec decode:** adaptive MTP ladder **k=2/4/5** (CosmicRaisins controller), probabilistic
   draft sampling, `quantization: compressed-tensors` on the draft (if you skip that field your
-  drafter silently loads garbage and acceptance craters — this is the single most common bug
-  in community GLM/DeepSeek MTP configs).
+  drafter silently loads garbage and acceptance craters). NOTE the stack-dependence: on THIS
+  DCP tree the quantized draft is fast and correct (72% accept at these speeds); on the
+  legacy ab666069 tree it is a 3× step-time loss — see the champion section. Measure on
+  YOUR tree; neither answer transfers.
 - **Shape:** `--max-model-len 131072 --max-num-seqs 12 --max-num-batched-tokens 2048`,
   gmu 0.90, kv `fp8_ds_mla`, cudagraph FULL_AND_PIECEWISE capture 72.
 - **Fabric:** dual-rail RoCEv2, NCCL 2.30.4, RoCE GID index resolved **dynamically at every
@@ -92,7 +94,7 @@ tok/s on this hardware you are measuring your prefix cache, not your prefill.
 | 1 | + upstream July Triton kernel set | — | — | — | **crashed fleet on deep prefill** |
 | 1b | + head-pad 64→16 only | — | — | — | **wedged under C=12 storm** |
 | 2 | 262K ctx / mnbt 2048 | — | — | — | **crashed on deep prefill (indexer law)** |
-| **3b** | **131K ctx / mnbt 2048** | **14.7 (+158%)** | **345 (+23%)** | **72.2%** | **winner, in production** |
+| **3b** | **131K ctx / mnbt 2048** | **14.7 (+158%)** | **345 (+23%)** | **72.2%** | **window winner (since superseded, above)** |
 
 ### The two findings worth stealing
 
