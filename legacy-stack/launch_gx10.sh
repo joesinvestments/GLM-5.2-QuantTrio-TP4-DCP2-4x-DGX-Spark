@@ -40,7 +40,7 @@ SSH_KEY="$HOME/.ssh/id_ed25519"
 #   node_user() { echo "tonyspark${1##*.}"; }
 node_user() { echo "gigachadreborn"; }
 
-IMAGE="glm52-legacy:challenger"
+IMAGE="glm52-legacy:challenger-v2b"
 NAME="vllm_slot"                         # container name on every node
 PORT=8210                                # OpenAI API port on the head node
 MASTER_PORT=29501                        # vLLM cross-node rendezvous port
@@ -125,6 +125,7 @@ ENVV=(
   -e "NCCL_CUMEM_ENABLE=0"
   -e "NCCL_IGNORE_CPU_AFFINITY=1"
   -e "NCCL_DEBUG=WARN"
+  -e "VLLM_MARLIN_USE_ATOMIC_ADD=1"
 )
 
 # Triton sparse-MLA kernels, bound read-only over the vLLM tree (matches
@@ -204,7 +205,7 @@ SERVE=(
   --trust-remote-code --reasoning-parser glm45 --tool-call-parser glm47 --enable-auto-tool-choice
   --enable-prefix-caching
   --async-scheduling
-  --speculative-config '{"method":"mtp","num_speculative_tokens":4,"draft_tensor_parallel_size":1,"attention_backend":"FLASHMLA_SPARSE"}'
+  --speculative-config '{"method":"mtp","num_speculative_tokens":4,"draft_tensor_parallel_size":1,"attention_backend":"FLASHMLA_SPARSE","quantization":"compressed-tensors","draft_sample_method":"probabilistic"}'
   --tensor-parallel-size 4 --pipeline-parallel-size 1
   --max-model-len 200000 --max-num-seqs 6 --max-num-batched-tokens 8192
   --gpu-memory-utilization 0.91 --kv-cache-memory-bytes 10950000000
