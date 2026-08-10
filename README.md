@@ -10,7 +10,36 @@ person building around that specific premise, and it changes the answers. A conf
 `max_num_seqs=1` on hand-picked prompts and a config tuned under a live agent are different
 animals.
 
-## Current champion: the legacy stack, 21.1 tok/s single-stream decode (2026-08-10)
+## Current champion: 44.6 tok/s single-stream decode — one env flag (2026-08-10, same day, correction)
+
+Hours after publishing the section below, the kernel investigation it called for landed, and
+it **inverts my own headline finding**. The quantized-draft slowness was not the quantized
+compute itself — it was Marlin's default small-batch reduce path (`atomic-add off`, fp32
+global reduction), at its worst at exactly the draft's tiny-M GEMM shapes, amplified by the
+draft's 4 sequential forwards per step. The fix is one environment variable:
+
+```
+VLLM_MARLIN_USE_ATOMIC_ADD=1
+```
+
+Full 2×2, single-stream cold decode (repeats in `window-data/kernel-exp*.json`):
+
+| draft config | no flag | with flag |
+|---|---|---|
+| bf16 (unquantized) | 21.1 tok/s @ 38.5% | 19.4 @ 32.9% (no effect) |
+| quantized probabilistic | 6.5 @ 61.4% | **44.6 @ 56.8%** (repeats 42.4 / 46.9) |
+
+The flag's entire effect lives in the quantized-draft path. So the drafter advice comes full
+circle: **quantize the draft (`quantization:"compressed-tensors"`) AND set the flag** — either
+alone is a regression from the other pairing, which is why half the community measures the
+"fix" as a win and I measured it as a loss yesterday. Both were right on their own half of
+the matrix. Outputs verified coherent and non-empty on repeated runs.
+
+Production config: the challenger image + quantized probabilistic k=4 draft + the flag.
+Two-day progression on the same weights and fleet, every step one named change:
+**5.7 → 14.7 → 21.1 → 44.6 tok/s (7.8×)**.
+
+## Previous champion: the legacy stack at 21.1 tok/s (2026-08-10, superseded same day)
 
 After the v4 window below, I rebuilt the *other* GLM stack — the no-DCP "legacy" lineage
 (eugr/spark-vllm-docker base at vLLM `ab666069` + the ciprianveg/CosmicRaisins Triton
@@ -33,7 +62,7 @@ server-counter-verified numbers at a serving config (12-seq class), cross-checke
 bring-up → 14.7 after the context-sizing window → 21.1 on the rebuilt stack. Same weights,
 same fleet, ~3.7× in two days, every step attributable to one named change.
 
-### The finding I haven't seen anyone publish: the famous drafter "fix" is a net LOSS here
+### The finding as measured BEFORE the atomic-add discovery (kept for the record — see correction above)
 
 The community's standard advice for GLM/DeepSeek MTP on these boxes — mine included, until
 today — is that a draft config without `quantization:"compressed-tensors"` silently loads a
