@@ -1,4 +1,4 @@
-# GLM-5.2 (QuantTrio Int4-Int8) — TP=4 + DCP2 on 4× DGX Spark, tuned for a real agent workload
+# GLM-5.2 (QuantTrio Int4-Int8) — TP=4 on 4× DGX Spark, tuned for a real agent workload
 
 This is my production GLM-5.2 serving config on a 4-node NVIDIA DGX Spark (GB10, sm_121a)
 cluster over 200G RoCEv2, and the measured tuning window that produced it.
@@ -10,7 +10,59 @@ person building around that specific premise, and it changes the answers. A conf
 `max_num_seqs=1` on hand-picked prompts and a config tuned under a live agent are different
 animals.
 
-## The v4 config (current production)
+## Current champion: the legacy stack, 21.1 tok/s single-stream decode (2026-08-10)
+
+After the v4 window below, I rebuilt the *other* GLM stack — the no-DCP "legacy" lineage
+(eugr/spark-vllm-docker base at vLLM `ab666069` + the ciprianveg/CosmicRaisins Triton
+sparse-MLA mods + the indexer MTP-overhang patch) — and probed it head-to-head against v4
+with the identical battery. It won decisively and is now my production config:
+
+| config | C=1 decode tok/s | cold prefill tok/s | accept | verdict |
+|---|---|---|---|---|
+| v4 (DCP2 stack, tuned — see below) | 14.7 | 282–345 | 72% | superseded |
+| **legacy challenger v1** | **21.1** | 282 storm / ~900 C=1 | 38.5% | **champion** |
+| + quantized probabilistic draft | 6.5 | 375 | 61.4% | rejected |
+| + quantized greedy draft | 7.6 | 351 | 44.1% | rejected |
+
+**Why I'm calling these the best numbers we've seen on this hardware for this workload:**
+every published 4×-Spark GLM figure I've checked is either measured at `max_num_seqs=1` on
+hand-picked high-acceptance content, counts SSE chunks (undercounts by the acceptance
+factor), or measures warm cache and calls it prefill. These are cold, cache-busted,
+server-counter-verified numbers at a serving config (12-seq class), cross-checked against
+18 hours of live agent traffic — and the progression is measured, not vibes: 5.7 tok/s at
+bring-up → 14.7 after the context-sizing window → 21.1 on the rebuilt stack. Same weights,
+same fleet, ~3.7× in two days, every step attributable to one named change.
+
+### The finding I haven't seen anyone publish: the famous drafter "fix" is a net LOSS here
+
+The community's standard advice for GLM/DeepSeek MTP on these boxes — mine included, until
+today — is that a draft config without `quantization:"compressed-tensors"` silently loads a
+degraded drafter, and adding it is a pure win (acceptance jumps ~38% → ~61%; I reproduced
+exactly that). What nobody measured: on this tree/hardware the properly-quantized w8a16
+draft block runs **~3× slower per step**. Net decode: 21.1 tok/s "broken" vs 6.5–7.6
+"fixed". I isolated the variables (greedy vs probabilistic, quantized vs not — see
+`window-data/challenger*.json`): the cost is the quantized draft *compute*, not the
+sampler. **The naive bf16 drafter wins.** If you've applied the popular fix, measure your
+end-to-end decode — you may be paying 3× step time for acceptance you can't cash.
+
+Open kernel question with a big prize: if the w8a16 draft path can be made fast
+(Marlin/atomic-add config?), 61% acceptance at ~120 ms steps arithmetic says ~30 tok/s.
+
+### Also corrected along the way
+
+The reference repo's README says the DCP branch includes the July head-padding natively —
+it does not (I checked the fork source at the pin *and* the branch tip; padding is still
+64). The +36–45% prefill numbers were measured on the legacy stack. If you're on the DCP
+stack waiting for that prefill by rebuilding, you're rebuilding the wrong tree — the padding
+(and those prefill numbers) live in the legacy lineage only. That correction is what
+redirected this campaign, and the ~900 tok/s C=1 cold prefill above is that win, realized.
+
+Launch machinery for the champion is in `legacy-stack/` — including
+`resolve_gid_and_launch.sh`, which resolves the RoCEv2 GID index dynamically at every boot
+and refuses to launch on disagreement. My GID moved 3→4 *during this campaign*; if yours is
+hardcoded, your next reboot is a dice roll.
+
+## The v4 config (DCP2 stack — superseded for my workload, kept for >200K sessions)
 
 - **Stack:** local-inference-lab/vllm @e232d26 + PR#72 + draft-quant packed mapping + b12x,
   plus two patches of mine (below). Weights: QuantTrio Int4-Int8Mix, unpruned, 256 experts.
