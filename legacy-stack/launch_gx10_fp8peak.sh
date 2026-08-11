@@ -40,7 +40,7 @@ SSH_KEY="$HOME/.ssh/id_ed25519"
 #   node_user() { echo "tonyspark${1##*.}"; }
 node_user() { echo "gigachadreborn"; }
 
-IMAGE="glm52-legacy:challenger-nvfp4"
+IMAGE="glm52-legacy:challenger-v2b"
 NAME="vllm_slot"                         # container name on every node
 PORT=8210                                # OpenAI API port on the head node
 MASTER_PORT=29501                        # vLLM cross-node rendezvous port
@@ -61,7 +61,7 @@ WEIGHTS_DIR="/var/tmp/glm-legacy/hf"
 # Do NOT mix these with a fresh upstream checkout: sparse_attn_indexer.py and
 # deepseek_v2.py are a matched pair (the indexer must export
 # fused_indexer_q_rope_quant, which deepseek_v2.py imports). See issue #5.
-KERNELS_DIR="/var/tmp/glm-triton-nvfp4"
+KERNELS_DIR="/var/tmp/glm-legacy/kernels"
 # ============================================================================
 
 say()  { printf '\n\033[1;36m== %s\033[0m\n' "$*"; }
@@ -205,11 +205,11 @@ SERVE=(
   --trust-remote-code --reasoning-parser glm45 --tool-call-parser glm47 --enable-auto-tool-choice
   --enable-prefix-caching
   --async-scheduling
-  --speculative-config '{"method":"mtp","num_speculative_tokens":2,"draft_tensor_parallel_size":1,"attention_backend":"FLASHMLA_SPARSE","quantization":"compressed-tensors","draft_sample_method":"probabilistic"}'
+  --speculative-config '{"method":"mtp","num_speculative_tokens":4,"draft_tensor_parallel_size":1,"attention_backend":"FLASHMLA_SPARSE","quantization":"compressed-tensors","draft_sample_method":"probabilistic"}'
   --tensor-parallel-size 4 --pipeline-parallel-size 1
-  --max-model-len 315968 --max-num-seqs 6 --max-num-batched-tokens 8192
+  --max-model-len 200000 --max-num-seqs 6 --max-num-batched-tokens 8192
   --gpu-memory-utilization 0.91 --kv-cache-memory-bytes 10950000000
-  --kv-cache-dtype nvfp4_ds_mla
+  --kv-cache-dtype fp8_ds_mla
   --distributed-executor-backend mp --compilation-config '{"cudagraph_mode":"FULL"}'
 )
 

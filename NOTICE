@@ -14,4 +14,9 @@ It vendors and builds upon Apache-2.0 licensed work by others:
 - patches/fix-indexer-mtp-overhang.py: tonyd2wild's fix, community-reported bug.
 - The adaptive-MTP controller referenced in the DCP recipe: Aiden Le's acceptance-length
   adaptation, forward-ported by CosmicRaisins.
+- The NVFP4 KV-cache port baked into the production image: tonyd2wild's port
+  (GLM-5.2-NVFP4-KV-4x-DGX-Spark repo, port/), building on danielwoz's E2M1 store kernel
+  (vllm-dspark-nvfp4). BTankut's glm-5.2-4x-dgx-spark 380K recipe provided the pinned-pool
+  discipline and the external deep-prefill numbers that motivated our measurement.
+  drowzeys independently built a parallel nvfp4-MLA KV implementation.
 Full credit chain in the README's credits section. Errors of integration are ours.

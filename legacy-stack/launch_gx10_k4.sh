@@ -205,7 +205,7 @@ SERVE=(
   --trust-remote-code --reasoning-parser glm45 --tool-call-parser glm47 --enable-auto-tool-choice
   --enable-prefix-caching
   --async-scheduling
-  --speculative-config '{"method":"mtp","num_speculative_tokens":2,"draft_tensor_parallel_size":1,"attention_backend":"FLASHMLA_SPARSE","quantization":"compressed-tensors","draft_sample_method":"probabilistic"}'
+  --speculative-config '{"method":"mtp","num_speculative_tokens":4,"draft_tensor_parallel_size":1,"attention_backend":"FLASHMLA_SPARSE","quantization":"compressed-tensors","draft_sample_method":"probabilistic"}'
   --tensor-parallel-size 4 --pipeline-parallel-size 1
   --max-model-len 315968 --max-num-seqs 6 --max-num-batched-tokens 8192
   --gpu-memory-utilization 0.91 --kv-cache-memory-bytes 10950000000

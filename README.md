@@ -63,6 +63,42 @@ JSONs in `window-data/` cover other content classes if you want the full picture
 number in this README comes off the server counters with the battery in this repo; check
 the work.
 
+## Production has moved: the capacity build (2026-08-11)
+
+The 44.6 config above remains the peak-throughput trophy and ships in
+legacy-stack/launch_gx10_fp8peak.sh. Production now runs a different point on the curve,
+chosen by measuring my agent's actual workload: **nvfp4_ds_mla KV cache, 315,968 context,
+MTP k=2** (legacy-stack/launch_gx10.sh). All numbers below are single-variable cells from
+the validity-enforced battery, raw JSONL in window-data/.
+
+| metric | fp8 peak config | production (nvfp4/316K/k2) |
+|---|---|---|
+| context window | 200,000 | **315,968 (+58%)** |
+| prose/sustained decode (the agentic class) | 19 to 21 | 19.3 (parity) |
+| deep-context decode, 30K in | ~21 | **24.8 @ 77% accept** |
+| deep cold prefill | 447 to 546 | **667 tok/s** |
+| summary-class peak decode | 44.6 | 20.6 (the one sacrifice) |
+| C=12 storm | clean, 88-96s | clean, 82s |
+
+Three findings from the window:
+
+1. **The k=2 vs k=4 ablation the adaptive-k repos never published**: prose is a dead tie,
+   but at 30K depth k=2 wins by 18% with 77% acceptance. Verify cost ramps with depth;
+   shallow drafts win where long sessions live. If your workload is deep agentic work,
+   run k=2 and stop paying for tail positions the verifier rejects.
+2. **The alignment law**: the community MTP-overhang patch (mine included) leaves a seam
+   between two block-table width computations. At max_model_len values not divisible by 64
+   the seam opens and the engine dies under concurrent load, first request, every time
+   (316,000 crashes, 315,968 is rock solid). Align your context length or move to vLLM
+   0.27, whose universal block-table alignment removes the seam properly.
+3. **nvfp4 KV pricing on this stack**: the format halves the high-acceptance decode peak,
+   holds parity on prose, and speeds deep prefill ~30%. It is a capacity-and-depth trade,
+   not a free win and not a loss: know which regime pays your bills before you adopt it.
+
+Credit where due: the nvfp4 port is tonyd2wild's work building on danielwoz's E2M1 kernel;
+BTankut's 380K pinned-pool recipe and his deep-prefill numbers pushed this measurement up
+my list; drowzeys built a parallel implementation independently. See NOTICE.
+
 ## The path there: rebuilding on the legacy stack (21.1 tok/s before the flag)
 
 After the v4 window below, I rebuilt the *other* GLM stack, the no-DCP "legacy" lineage
