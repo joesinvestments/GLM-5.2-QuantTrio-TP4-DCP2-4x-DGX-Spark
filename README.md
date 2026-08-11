@@ -180,7 +180,7 @@ your workload changes, for me that's one launcher run back to the 262K recipe.
 
 ## My patches (in `patches/`)
 
-- **`fix-indexer-mtp-overhang.patch`**, the indexer's expanded block-table has no headroom
+- **`fix-indexer-mtp-overhang.py`**, the indexer's expanded block-table has no headroom
   for MTP draft spill when `max_model_len % (block_size × cp) == 0`; at ≥3 concurrent
   requests the engine crashes. My exact production shape. Community-reported first; this is
   the anchored patch for the e232d26 tree.
