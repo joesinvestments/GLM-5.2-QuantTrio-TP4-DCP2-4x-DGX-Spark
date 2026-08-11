@@ -39,6 +39,17 @@ Production config: the challenger image + quantized probabilistic k=4 draft + th
 Two-day progression on the same weights and fleet, every step one named change:
 **5.7 → 14.7 → 21.1 → 44.6 tok/s (7.8×)**.
 
+**Content-dependence disclosure (added same day, after live agent cross-check):** 44.6 is a
+real but content-favorable number — the probe's short-summary outputs draft-accept at
+56–61%. On realistic structured-prose generations (250-word analysis prompts) acceptance
+runs 33–36% and decode lands at **~19–21 tok/s single-stream**, which my agent's first real
+turn through the stack independently confirmed (21.2 tok/s client-measured). Temperature is
+not the variable (temp 0 vs 1.0 measured within noise of each other). The 2×2 above is
+unaffected — every cell was probed with the identical battery, so the relative conclusions
+stand — but if you're comparing MY headline against YOUR prose workload, ~20 is the honest
+sustained number and 44+ is the high-acceptance ceiling. I criticized other repos' peaks
+for exactly this; same standard applies to mine.
+
 ## Previous champion: the legacy stack at 21.1 tok/s (2026-08-10, superseded same day)
 
 After the v4 window below, I rebuilt the *other* GLM stack — the no-DCP "legacy" lineage
