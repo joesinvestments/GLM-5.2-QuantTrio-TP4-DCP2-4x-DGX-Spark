@@ -205,8 +205,13 @@ shape, measured on the identical config and probe:
 | NCCL config | C=1 decode tok/s | wedge exposure |
 |---|---|---|
 | CROSS_NIC=1, QPS default (the 44.6 config) | 44.6 | wedged night one |
-| CROSS_NIC=0 + IB_QPS_PER_CONNECTION=1 | 6.7 | mitigated |
-| CROSS_NIC=0 alone | 17.5 | partial |
+| CROSS_NIC=0 + IB_QPS_PER_CONNECTION=1 | measurement pending idle window | mitigated |
+| CROSS_NIC=0 alone | measurement pending idle window | partial |
+
+The two pending rows were first measured while live production traffic shared the engine,
+which is not a valid C=1 number; they will be re-measured in a declared idle window. The
+probe battery in window-data/ now enforces this itself: it refuses to start against a
+non-idle server and discards any segment where foreign requests complete mid-measurement.
 
 Both flags strangle the tiny-message collectives this decode path lives on. My verdict:
 the mitigation costs more than the disease. I serve the full-speed config and treat the
