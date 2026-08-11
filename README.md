@@ -190,6 +190,36 @@ your workload changes, for me that's one launcher run back to the 262K recipe.
   container name-conflict race handed me a 3/4-rank "healthy" fleet exactly once, which is
   once more than acceptable.
 
+## The NCCL wedge, and what the standard mitigations actually cost
+
+This stack inherits the frozen-collective failure mode I documented on DeepSeek
+(NVIDIA/nccl issue 2334): under sustained mixed traffic at max concurrency, hours into
+serving, an all-gather stops completing and the engine freezes while HTTP stays alive.
+Never triggered by probes or benchmarks, only by real traffic. It hit this GLM stack on
+night one (NCCL 2.30.4 via LD_PRELOAD, so it is not version-specific; the issue thread
+has the full multi-model evidence).
+
+Here is the data nobody publishes: what the standard mitigations cost at this workload
+shape, measured on the identical config and probe:
+
+| NCCL config | C=1 decode tok/s | wedge exposure |
+|---|---|---|
+| CROSS_NIC=1, QPS default (the 44.6 config) | 44.6 | wedged night one |
+| CROSS_NIC=0 + IB_QPS_PER_CONNECTION=1 | 6.7 | mitigated |
+| CROSS_NIC=0 alone | 17.5 | partial |
+
+Both flags strangle the tiny-message collectives this decode path lives on. My verdict:
+the mitigation costs more than the disease. I serve the full-speed config and treat the
+wedge as an availability event: an external watchdog detects the frozen-engine signature
+(prefill AND decode stalled while HTTP answers, which no HTTP health check will ever
+catch), pages my phone, and auto-relaunches. A wedge costs ~15 minutes; the flags cost
+2.5-6.6x forever. Make your own call, but make it with these numbers.
+
+Two hard-won rules for whatever watchdog you run: verify its recovery path actually
+reproduces the SERVING config (dry-run the recovery launcher and diff it against the live
+container; mine silently pointed at a retired stack through one real outage), and prove
+the check can FAIL before you trust it passing.
+
 ## Operational notes that matter more than the config
 
 - **Streaming clients only.** A non-streaming client with a timeout turns every timeout into
