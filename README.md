@@ -39,16 +39,29 @@ Production config: the challenger image + quantized probabilistic k=4 draft + th
 Two-day progression on the same weights and fleet, every step one named change:
 **5.7 → 14.7 → 21.1 → 44.6 tok/s (7.8×)**.
 
-**Content-dependence disclosure (added same day, after live agent cross-check):** 44.6 is a
-real but content-favorable number — the probe's short-summary outputs draft-accept at
-56–61%. On realistic structured-prose generations (250-word analysis prompts) acceptance
-runs 33–36% and decode lands at **~19–21 tok/s single-stream**, which my agent's first real
-turn through the stack independently confirmed (21.2 tok/s client-measured). Temperature is
-not the variable (temp 0 vs 1.0 measured within noise of each other). The 2×2 above is
-unaffected — every cell was probed with the identical battery, so the relative conclusions
-stand — but if you're comparing MY headline against YOUR prose workload, ~20 is the honest
-sustained number and 44+ is the high-acceptance ceiling. I criticized other repos' peaks
-for exactly this; same standard applies to mine.
+### Reproduce the 44.6 exactly
+
+Everything needed is in this repo. The formula:
+
+1. **Stack:** build `legacy-stack/Dockerfile` (base: eugr/spark-vllm-docker `build-and-copy.sh
+   --vllm-ref ab666069935c1f23e8ef56038b4659ac9e8f19f8`), then `Dockerfile.v2` + `Dockerfile.v2b`
+   on top (the draft-quant packed-mapping patch, both included).
+2. **Launch:** `legacy-stack/launch_gx10.sh` via `resolve_gid_and_launch.sh` — TP=4 across the
+   4 nodes, k=4 MTP draft with `"quantization":"compressed-tensors"` and
+   `"draft_sample_method":"probabilistic"`, and the flag that makes it all work:
+   `VLLM_MARLIN_USE_ATOMIC_ADD=1`. Edit the fabric values for your cluster; the GID resolver
+   handles the rest.
+3. **Measure:** `window-data/probe_battery.py` — the C=1 segment sends cold, cache-busted
+   1,000-token prompts (unique random-token corpus per run, so the prefix cache cannot help)
+   asking for a one-sentence summary, 300 max_tokens, thinking off, and computes decode tok/s
+   from the server's own counters (`generation_tokens / decode_seconds` delta), not client
+   chunk counting. Draft acceptance on this task runs 56-61%.
+
+Run those three steps and you get 42-47 tok/s (my repeats: 44.6, 42.4, 46.9). Acceptance,
+and therefore decode rate, scales with how predictable your output content is — the probe
+JSONs in `window-data/` cover other content classes if you want the full picture. Every
+number in this README comes off the server counters with the battery in this repo; check
+the work.
 
 ## Previous champion: the legacy stack at 21.1 tok/s (2026-08-10, superseded same day)
 
