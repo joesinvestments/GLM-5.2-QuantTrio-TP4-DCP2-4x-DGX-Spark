@@ -95,6 +95,35 @@ Three findings from the window:
    holds parity on prose, and speeds deep prefill ~30%. It is a capacity-and-depth trade,
    not a free win and not a loss: know which regime pays your bills before you adopt it.
 
+### Concurrency: the decode-aware scheduler mod, and why its shipped default is wrong
+
+My storm number above (C=12) proves the config survives concurrent load. It does not prove
+it serves well under it, and those are different bars. ThinkCode (issue #2) ran my own
+battery on his 4-node fleet with the `decode-aware-scheduler` mod enabled and measured
+**6.3 tok/s per-stream at C=12 against my 1.5**, same metric, same harness, server-counter
+delta on both sides.
+
+Two things that matter more than the headline:
+
+- **This repo shipped that mod unbuilt.** `legacy-stack/Dockerfile` copied all three mods
+  and built two. Anyone building from here had the mod's flags rejected. Fixed; it now
+  builds, and stays inert until you pass `DECODE_AWARE=1`.
+- **The shipped `DPTB=256` is only right at storm concurrency.** His C=4 sweep: DPTB=2048
+  gives +11% per-stream over the mod being off with aggregate, wall and TTFT essentially
+  unchanged, while DPTB=256 raises TTFT 71% (31.7s to 54.1s) to buy 9% per-stream. The
+  mechanism is plain once stated: DPTB caps prefill tokens per step while any decode is
+  active, so a 4,300-token prompt takes ~17 steps at 256 and ~3 at 2048. The mod's own
+  README suggests 1024; the launcher ships 256.
+
+So the finding is about the mod, not the number: enable it, and tune DPTB to your
+concurrency rather than inheriting the default. A 4x win at C=12 and a net loss at C=4 came
+from the same setting. Measurements and the DPTB table are ThinkCode's, on his hardware.
+
+Methodology note worth stealing from that exchange: his C=4 table reports a client-side
+median while the battery reports a server-counter figure. Those are different metrics and
+do not belong on the same axis. Same class of error as comparing a peak content class
+against a sustained one, which is the trap this whole README exists to document.
+
 Credit where due: the nvfp4 port is tonyd2wild's work building on danielwoz's E2M1 kernel;
 BTankut's 380K pinned-pool recipe and his deep-prefill numbers pushed this measurement up
 my list; drowzeys built a parallel implementation independently. See NOTICE.
