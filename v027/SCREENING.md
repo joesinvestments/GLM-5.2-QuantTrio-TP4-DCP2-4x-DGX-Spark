@@ -12,6 +12,7 @@ The control survives light single-turn traffic across idle gaps and dies under r
 | cell | variable | verdict | died at |
 |---|---|---|---|
 | `eager` | --enforce-eager (no CUDA graphs at all) | **WEDGED** | cycle 1 / storm |
+| `cg_piecewise` | cudagraph_mode PIECEWISE | **WEDGED** | cycle 1 / storm |
 
 ## Findings so far
 
