@@ -95,39 +95,39 @@ Three findings from the window:
    holds parity on prose, and speeds deep prefill ~30%. It is a capacity-and-depth trade,
    not a free win and not a loss: know which regime pays your bills before you adopt it.
 
-### Known defect: this build wedges at drain-to-idle (MTP on sparse MLA)
+### Known defect: vLLM 0.27 fails under concurrent load on this hardware
 
-Publishing this because it is the most important thing in the repo for anyone running this
-config in production, and because it took three outages to characterise.
+Five 0.27 configurations were tested against an identical trigger: a C=6 storm of 1.2K-token
+prompts, then a 27K-token cold prefill, then drain, then a probe. All five died in cycle one.
 
-**Symptom.** The engine serves normally, then dies at the moment the batch drains to idle,
-never under load. The head's log shows generation throughput stepping down to 0.0, a request
-arriving and reviving it, and eventually one drain that never comes back. HTTP keeps
-answering, so any health check that only pings `/v1/models` reports a healthy server.
+| 0.27 configuration | result |
+|---|---|
+| prebuilt image + #51538 Python half (`47f6574`), MTP on | wedged |
+| **source build, BOTH #51538 commits** (incl. the CUDA top-k guard `db39e67`), MTP on | wedged |
+| same source build, **speculative decoding removed entirely** | wedged |
+| same source build, activation buffer `max-num-batched-tokens` 8192 to 2048 | wedged |
+| same source build, `gpu-memory-utilization` 0.91 to 0.85 | wedged |
 
-Two terminal signatures, same disease with different timeouts firing first:
+The legacy stack in this repo survives a **heavier** storm (C=12) repeatedly, measured with the
+same battery. So on this hardware the variable is the vLLM version, not speculative decoding,
+not activation buffer size, and not memory headroom.
 
-- head `EngineCore` starves in `shm_broadcast.acquire_read` (line 802/803, never the writer's
-  682), logging "No available shared memory broadcast block found in 60 seconds" every minute
-  forever; or
-- torch's NCCL watchdog fires at 600 s with `_ALLGATHER_BASE` timeouts on the same SeqNum
-  across every rank, i.e. a collective one worker never joined.
+**Correction.** An earlier version of this section attributed the failure to MTP on sparse MLA,
+following the upstream diagnosis in vllm-project/vllm#51593. Removing speculative decoding did
+not prevent the failure, so that attribution was wrong and is withdrawn. The upstream fix
+#51538 was also tested in full, source-built with both commits, and did not resolve it; that
+negative result is reported on vllm-project/vllm#51921.
 
-**Cause.** Speculative decoding (MTP) on the sparse-MLA attention path deadlocks when the
-batch drains: padded MTP slots produce negative context lengths that hang the sparse top-k
-kernel. Upstream: vllm-project/vllm#51593, with fixes in #51538. A maintainer identified this
-independently from our wedge report (#51921) before we mentioned the idle correlation.
+**How these verdicts are judged.** A request timeout is treated as a signal, never a verdict.
+After any timeout the harness asks the engine to serve a small fresh request, twice, with a
+generous timeout; only a failure to serve counts as a wedge. Boots are readiness-gated, so
+cudagraph warmup is never mistaken for a hang. Both rules exist because earlier runs in this
+repo were judged by timeout alone and produced four retracted verdicts, kept in
+`v027/screen027-INVALID-timeout-predicate.jsonl`.
 
-**Corroboration.** Same config on vLLM 0.27 jams permanently about a minute after drain
-(#51921). This build shows a recoverable version constantly: **the first request after an
-idle period takes 30-35 s, then service is normal at 2-3 s.** That is the same transition
-surviving by luck. Every idle gap is a dice roll, which is why overnight agent sessions with
-natural pauses fail far more often than daytime burst traffic.
-
-**Mitigation until upstream lands.** Run without speculative decoding
-(`legacy-stack/launch_gx10_nospec.sh`, a one-line diff). It costs a large share of decode
-throughput and buys a server that survives idle. If you need the speed more than the uptime,
-run MTP and expect to be woken up.
+**What to run instead.** The legacy configuration documented above. vLLM 0.27 is not
+production-viable on a 4-node GB10 cluster for this model until the concurrency failure is
+resolved upstream. Everything needed to retest when it is: `v027/`.
 
 ### Concurrency: the decode-aware scheduler mod, and why its shipped default is wrong
 
