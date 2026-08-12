@@ -1,29 +1,42 @@
 # Screening vLLM 0.27 for the drain/concurrency deadlock
 
-Live ledger. This file is regenerated as each cell finishes, including the cells that
-disprove my own hypotheses. Raw JSONL: `screen027.jsonl`. Harness: `wedge_trigger.py`
-(C=6 storm, then a 27K-token cold prefill, then drain, then probe, 3 cycles) and
-`screen_027.sh` (boots each cell unattended, one variable changed from the control).
+## RETRACTED 2026-08-12: the first four verdicts were instrument error, not results
 
-**Control:** v0.27.0 + DeepGEMM `2fd67329` + #51920 workaround + #51538's `47f6574`,
-GLM-5.2 TP=4, FLASHINFER_MLA_SPARSE_SM120, fp8_ds_mla, ctx 200000, seqs 6, MTP k=2.
-The control survives light single-turn traffic across idle gaps and dies under real load.
+The cells `eager`, `cg_piecewise`, `cg_none` and `breakable_cg` were published here as WEDGED.
+They were not. Every one of them was declared dead at **exactly** the harness's 180 s
+per-request timeout:
 
-| cell | variable | verdict | died at |
-|---|---|---|---|
-| `eager` | --enforce-eager (no CUDA graphs at all) | **WEDGED** | cycle 1 / storm |
-| `cg_piecewise` | cudagraph_mode PIECEWISE | **WEDGED** | cycle 1 / storm |
-| `cg_none` | cudagraph_mode NONE | **WEDGED** | cycle 1 / storm |
-| `breakable_cg` | VLLM_USE_BREAKABLE_CUDAGRAPH=1 | **WEDGED** | cycle 1 / storm |
+```
+eager         trigger 09:42:49 -> verdict 09:45:49
+cg_piecewise  trigger 10:00:26 -> verdict 10:03:26
+cg_none       trigger 10:17:33 -> verdict 10:20:33
+breakable_cg  trigger 10:28:01 -> verdict 10:31:01
+```
 
-## Findings so far
+Four engines do not die identically to the second. That is a timeout firing. The trigger
+treated "request did not return in 180 s" as proof of a wedge, and a C=6 storm of 1200-token
+prompts legitimately exceeds that on slower configurations, `--enforce-eager` most of all
+since it removes CUDA graphs and runs several times slower by design. The harness measured my
+own impatience and called it a deadlock.
 
-**CUDA graphs are not the cause.** `--enforce-eager` removes graph replay entirely and
-the engine still hangs, and it hangs *earlier*: the control survives the storm and dies on the
-following drain, while eager died inside the storm itself on cycle 1. That eliminates the
-graph-pointer-staleness branch and sharpens the trigger: the operative condition is concurrent
-load, not the idle transition I originally described. Eager also makes every step slower, so it
-spends longer in the dangerous region, which fits a race that scales with time under concurrency.
+**The conclusion drawn from those cells, that CUDA graphs are eliminated as the cause, is
+withdrawn.** It may still be true. It is not supported by this data.
 
-Cells still to run are listed in the table as they land. Nothing here is filtered:
-a hypothesis that dies gets published the same as one that survives.
+Raw invalid ledger kept as `screen027-INVALID-timeout-predicate.jsonl` rather than deleted.
+
+## What the harness does now
+
+A timeout is a signal, never a verdict. On any timeout the harness reads the server's own
+counters and watches `generation_tokens_total` for 180 s:
+
+- counter still climbing -> the engine is ALIVE and merely slow; the cell continues, and the
+  slowness is recorded as a note on the result
+- counter frozen, or metrics unreachable -> wedged, with the reason recorded
+
+Per-request timeout raised to 600 s so that slow configurations are measured rather than
+guillotined. Re-running the full matrix against the corrected harness; results below as they
+land.
+
+## Verdicts
+
+(campaign restarting; table regenerates as cells complete)
