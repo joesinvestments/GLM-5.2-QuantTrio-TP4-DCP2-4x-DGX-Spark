@@ -3,7 +3,7 @@
 # Run on EVERY node (deterministic rebuild; no image transfer needed).
 # Inputs (in $PORT_DIR): apply_nvfp4_plumbing.py, nvfp4_glm_kernels.py,
 #                        b12x-nvfp4/{traits.py,kernel.py,b12x_sparse_helpers.py,...}
-# Produces: image vllm-node-tf5-glm52-b12x:nvfp4-v1
+# Produces: image glm52-legacy:challenger-nvfp4
 #           overlay dir /var/tmp/glm-triton-nvfp4 (KNOWNGOOD /var/tmp/glm-triton untouched)
 set -euo pipefail
 
@@ -87,5 +87,10 @@ docker commit \
   --change 'CMD []' \
   nvfp4build "$OUT_TAG" >/dev/null
 docker rm -f nvfp4build >/dev/null
-docker images --format '{{.Repository}}:{{.Tag}} {{.Size}}' | grep nvfp4-v1
+# Verify the tag we actually produced. Previously this grepped a hardcoded 'nvfp4-v1' left
+# over from a rename, so under `set -e` a GOOD build exited 1 on a clean node, and on a node
+# holding a stale nvfp4-v1 image it printed the OLD image and declared success. Reported by
+# ThinkCode in issue #3. A verification step must verify the thing it claims to.
+docker image inspect "$OUT_TAG" >/dev/null 2>&1 || die "commit did not produce $OUT_TAG"
+docker images --format '{{.Repository}}:{{.Tag}} {{.Size}}' | grep -F "$OUT_TAG"
 echo "BUILD OK on $(hostname)"
