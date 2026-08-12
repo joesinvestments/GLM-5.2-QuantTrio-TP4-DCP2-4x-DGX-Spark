@@ -14,6 +14,7 @@ The control survives light single-turn traffic across idle gaps and dies under r
 | `eager` | --enforce-eager (no CUDA graphs at all) | **WEDGED** | cycle 1 / storm |
 | `cg_piecewise` | cudagraph_mode PIECEWISE | **WEDGED** | cycle 1 / storm |
 | `cg_none` | cudagraph_mode NONE | **WEDGED** | cycle 1 / storm |
+| `breakable_cg` | VLLM_USE_BREAKABLE_CUDAGRAPH=1 | **WEDGED** | cycle 1 / storm |
 
 ## Findings so far
 
