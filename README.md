@@ -129,6 +129,17 @@ repo were judged by timeout alone and produced four retracted verdicts, kept in
 production-viable on a 4-node GB10 cluster for this model until the concurrency failure is
 resolved upstream. Everything needed to retest when it is: `v027/`.
 
+**Update.** The `0.91 to 0.85` memory row above was a real result but a weak one, the system
+stayed chronically thin either way. A full follow-up campaign found the actual `kv-cache`
+floor, got the fleet to genuinely healthy headroom (4-8 GiB free, verified via
+`/proc/meminfo`, not inferred), and reproduced the wedge anyway at production settings. Along
+the way: all four cudagraph modes wedge, not just eager; a second, different, reproducible bug
+was found and confirmed as a separate artifact of the memory-diagnostic config (not this one);
+both available attention and MoE backend alternatives for this hardware were checked against
+source and closed by live rejection, not left untried; and a stuck fleet was captured live with
+per-rank Python stacks showing all four ranks blocked in different native kernels, not the same
+one. Full writeup: **[`v027/MEMORY-AND-KERNEL-FINDINGS.md`](v027/MEMORY-AND-KERNEL-FINDINGS.md)**.
+
 ### Concurrency: the decode-aware scheduler mod, and why its shipped default is wrong
 
 My storm number above (C=12) proves the config survives concurrent load. It does not prove

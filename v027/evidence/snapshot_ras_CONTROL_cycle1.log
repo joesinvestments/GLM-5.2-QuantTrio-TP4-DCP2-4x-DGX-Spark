@@ -1,0 +1,96 @@
+===== gx10-1 =====
+NCCL version 2.30.7 compiled with CUDA 13.3
+CUDA runtime version 13030, driver version 13000
+
+Job summary
+===========
+
+  Nodes  Processes         GPUs  Processes     GPUs
+(total)   per node  per process    (total)  (total)
+      4          1            1          4        4
+
+Communicators... (0.025s)
+=============
+
+Group     Comms     Nodes     Ranks     Ranks     Ranks    Status  Errors
+    #  in group  per comm  per node  per comm  in group
+    0         2         4         1         4         4   RUNNING      OK
+
+Errors
+======
+
+Warnings
+========
+
+===== gx10-2 =====
+NCCL version 2.30.7 compiled with CUDA 13.3
+CUDA runtime version 13030, driver version 13000
+
+Job summary
+===========
+
+  Nodes  Processes         GPUs  Processes     GPUs
+(total)   per node  per process    (total)  (total)
+      4          1            1          4        4
+
+Communicators... (0.002s)
+=============
+
+Group     Comms     Nodes     Ranks     Ranks     Ranks    Status  Errors
+    #  in group  per comm  per node  per comm  in group
+    0         2         4         1         4         4   RUNNING      OK
+
+Errors
+======
+
+Warnings
+========
+
+===== gx10-3 =====
+NCCL version 2.30.7 compiled with CUDA 13.3
+CUDA runtime version 13030, driver version 13000
+
+Job summary
+===========
+
+  Nodes  Processes         GPUs  Processes     GPUs
+(total)   per node  per process    (total)  (total)
+      4          1            1          4        4
+
+Communicators... (0.002s)
+=============
+
+Group     Comms     Nodes     Ranks     Ranks     Ranks    Status  Errors
+    #  in group  per comm  per node  per comm  in group
+    0         2         4         1         4         4   RUNNING      OK
+
+Errors
+======
+
+Warnings
+========
+
+===== gx10-4 =====
+NCCL version 2.30.7 compiled with CUDA 13.3
+CUDA runtime version 13030, driver version 13000
+
+Job summary
+===========
+
+  Nodes  Processes         GPUs  Processes     GPUs
+(total)   per node  per process    (total)  (total)
+      4          1            1          4        4
+
+Communicators... (0.003s)
+=============
+
+Group     Comms     Nodes     Ranks     Ranks     Ranks    Status  Errors
+    #  in group  per comm  per node  per comm  in group
+    0         2         4         1         4         4   RUNNING      OK
+
+Errors
+======
+
+Warnings
+========
+

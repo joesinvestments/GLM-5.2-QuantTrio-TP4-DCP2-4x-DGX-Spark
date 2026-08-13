@@ -9,8 +9,17 @@ disprove my own hypotheses. Raw JSONL: `screen027.jsonl`. Harness: `wedge_trigge
 GLM-5.2 TP=4, FLASHINFER_MLA_SPARSE_SM120, fp8_ds_mla, ctx 200000, seqs 6, MTP k=2.
 The control survives light single-turn traffic across idle gaps and dies under real load.
 
-| cell | variable | verdict | died at |
+| cell | variable | verdict | RAS at wedge |
 |---|---|---|---|
+| CONTROL | cudagraph_mode FULL | WEDGED | clean |
+| cg_piecewise | cudagraph_mode PIECEWISE | WEDGED | clean |
+| cg_none | cudagraph_mode NONE | WEDGED | mismatched (3 ranks op 1356, 1 rank op 1355) |
+| eager | `--enforce-eager` | WEDGED | clean |
+
+All four cudagraph modes wedge with the identical storm-phase-timeout signature. Cudagraph mode
+does not gate the failure. Full detail, plus the memory campaign, two closed backend-override
+levers, and a live stuck-kernel capture with per-rank Python stacks:
+**[`MEMORY-AND-KERNEL-FINDINGS.md`](MEMORY-AND-KERNEL-FINDINGS.md)**.
 
 ## Findings so far
 
