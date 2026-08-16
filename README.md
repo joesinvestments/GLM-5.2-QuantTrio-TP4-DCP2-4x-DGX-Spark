@@ -10,7 +10,38 @@ person building around that specific premise, and it changes the answers. A conf
 `max_num_seqs=1` on hand-picked prompts and a config tuned under a live agent are different
 animals.
 
-## Current champion: 44.6 tok/s single-stream decode, unlocked by one env flag
+## 2026-08-16 update: the concurrency ceiling was a cudagraph bug
+
+Raising `--max-num-seqs` from 4 to 16 -- while leaving the cudagraph capture
+ladder alone -- moved aggregate throughput hard and unlocked a concurrency level
+that had been killing the engine outright:
+
+| | before | after |
+|---|---|---|
+| prose C4 | 44.97 tok/s | **50.34** (+12.7%) |
+| prose C8 | 51.94 | **71.82** (+38%) |
+| prose C16 | not serviceable | **99.84** |
+
+The blocker was never the hardware or DCP. `cudagraph_capture_sizes` must be a
+**dense ladder of multiples of `1 + num_speculative_tokens`**; a gap makes some
+batch pad, padding rows carry `decode_len = 0`, and the non-uniform batch hits a
+broken branch in the sparse MLA indexer that assumes DCP-sharded and global
+block-table widths match. Scaling capture sizes up alongside `max-num-seqs` --
+the natural move -- creates exactly those gaps. Full mechanism and repro matrix:
+[`v027/concurrency`](v027/concurrency/).
+
+Two more findings from the same sweep:
+
+- **[`v027/prefix-cache`](v027/prefix-cache/)** -- cold prefill is pinned at
+  ~580 tok/s and three levers failed to move it, but it barely matters: the
+  prefix cache is worth **~100x** on turn 2+ (175 s -> 1.7 s at 100K context).
+  Measured envelope: 16 sessions at 16K, or 6 at 100K, all resident. Tune the KV
+  pool, not prefill.
+- **[`v027/fabric`](v027/fabric/)** -- do **not** switch `--all2all-backend` to
+  DeepEP on a 1-GPU-per-node RoCE fleet: 58-85% slower, correctness intact, which
+  makes it easy to miss.
+
+## Earlier champion: 44.6 tok/s single-stream decode, unlocked by one env flag
 
 The kernel investigation the earlier findings called for paid off the same day, and the
 answer rewrote the whole drafter picture. The quantized-draft slowness was never the
