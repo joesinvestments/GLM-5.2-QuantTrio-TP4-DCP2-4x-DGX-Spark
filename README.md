@@ -10,6 +10,34 @@ person building around that specific premise, and it changes the answers. A conf
 `max_num_seqs=1` on hand-picked prompts and a config tuned under a live agent are different
 animals.
 
+## 2026-08-17 update: the 72-hour session, three new repos, and where the project goes next
+
+Production is now TP=4 + DCP=4 (V1 runner, MTP k=2, B12X sparse MLA, nvfp4_ds_mla KV) on the QuantTrio
+Int4-Int8Mix unpruned body; the DCP4 pool is the KV warehouse the real workload wants, and that trumps
+raw speed here (`glm52-spark-kit/docs/RECOMMENDATION.md`). Numbers this morning, same probes: 37.7 tok/s at
+four concurrent, 11.6 per request, 605-626 prefill, gate passing.
+
+What the weekend produced, in three repos:
+
+- [glm52-spark-kit](https://github.com/joesinvestments/glm52-spark-kit): the source-form runtime kit. The b12x sparse indexer taught to run at DCP>1
+  with a DCP-sharded scratch (proven live at DCP4: +3 to +8% at 32K, slower at 316K, so documented and not
+  adopted); a fused Triton writer for the NVFP4 MLA KV record with a fail-closed gate; bird's DSpark ring
+  drafting ported onto 0.27 and running at DCP=4 (first DSpark at DCP>1 on this stack) with a training
+  capture hook, plus the honest acceptance matrix showing it does not beat MTP k=2 yet; the platform image
+  on the AEON v0.27.1 base; every launcher; the session log with every result at the config it was measured.
+- [glm52-aeon-crossnode-graphs](https://github.com/joesinvestments/glm52-aeon-crossnode-graphs): the hand-back to AEON. His v0.27.1 notes say cross-node CUDA graphs are
+  broken; on four Sparks at TP=4 + DCP=4 on his image they captured, passed the gate, and served at parity.
+  Also: nvidia's full-NVFP4 GLM-5.2 unpruned boots on his image with the CUTLASS FP4 MoE kernel, first
+  time shown on four Sparks, and the memory arithmetic that says it is not the decode path (107 GB per
+  rank, 4.5 bits per weight against int4's 4.1, on bandwidth-bound hardware).
+- [spark-fleet-guard](https://github.com/joesinvestments/spark-fleet-guard): the failsafes written after two power cycles in two days: SBSA hardware
+  watchdog, persistent rails, single-flight guarded launcher with evidence capture, NCCL RAS wedge capture.
+
+Where it goes next, and it is open to anyone with Sparks: a decode-step profile of this model at C1 and
+C4 (we run a ~50 ms step where the bandwidth bound says ~15, and nobody has published the breakdown), then
+the top slice of that profile; a drafter finetuned on captures from this exact stack; and PRs upstream so
+this stops being one fleet's overlays.
+
 ## 2026-08-16 update: the concurrency ceiling was a cudagraph bug
 
 Raising `--max-num-seqs` from 4 to 16 -- while leaving the cudagraph capture
