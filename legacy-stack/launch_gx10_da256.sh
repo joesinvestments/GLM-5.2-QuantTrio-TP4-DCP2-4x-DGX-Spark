@@ -38,7 +38,7 @@ SSH_KEY="$HOME/.ssh/id_ed25519"
 # the same user, just `echo` it. Our cluster numbers users by the last octet
 # (192.168.192.1 -> tonyspark1, .2 -> tonyspark2, ...), i.e.:
 #   node_user() { echo "tonyspark${1##*.}"; }
-node_user() { echo "gigachadreborn"; }
+node_user() { echo "${NODE_USER:-<node-user>}"; }
 
 IMAGE="glm52-legacy:challenger-nvfp4-da"
 NAME="vllm_slot"                         # container name on every node

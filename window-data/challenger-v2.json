@@ -22,9 +22,9 @@ ConnectionRefusedError: [Errno 61] Connection refused
 During handling of the above exception, another exception occurred:
 
 Traceback (most recent call last):
-  File "/Users/gigachad/Desktop/GLM52-RESTORE-BUNDLE/window-20260810/probe_cell.py", line 37, in <module>
+  File "<local>/window-20260810/probe_cell.py", line 37, in <module>
     m0 = metrics(); t0 = time.monotonic()
-  File "/Users/gigachad/Desktop/GLM52-RESTORE-BUNDLE/window-20260810/probe_cell.py", line 12, in metrics
+  File "<local>/window-20260810/probe_cell.py", line 12, in metrics
     t = urllib.request.urlopen(BASE + "/metrics", timeout=10).read().decode()
   File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/urllib/request.py", line 214, in urlopen
     return opener.open(url, data, timeout)
