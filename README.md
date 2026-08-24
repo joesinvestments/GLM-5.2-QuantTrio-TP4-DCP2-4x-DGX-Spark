@@ -1,3 +1,12 @@
+# ARCHIVED: consolidated into glm52-spark-kit
+
+This repo's full contents now live at
+https://github.com/joesinvestments/glm52-spark-kit/tree/main/quanttrio-tp4-dcp2
+as of 2026-08-24. All GLM-5.2 work is maintained in that single repo.
+This archive is kept read-only for link and history stability.
+
+---
+
 # GLM-5.2 (QuantTrio Int4-Int8): TP=4 on 4x DGX Spark, tuned for a real agent workload
 
 This is my production GLM-5.2 serving config on a 4-node NVIDIA DGX Spark (GB10, sm_121a)
